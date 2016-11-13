@@ -1,29 +1,51 @@
 import React from 'react';
+import { browserHistory } from 'react-router'
+
+class ErrorMessage extends React.Component {
+  constructor(props) {
+    super(props)
+  }
+  render() {
+    return (
+      <div className="alert alert-danger fade in">
+        <a href="#" className="close" data-dismiss="alert">&times;</a>
+        <strong>Error!</strong> {this.props.message}
+      </div>
+    )
+  }
+}
 
 class SignIn extends React.Component {
 
   constructor(props) {
-     super(props);
+    super(props);
 
-     this.state = {
-        email: 'Initial data...',
-        password: '....'
-     }
+    this.state = {
+      isError: false,
+      output: '....'
+    }
 
-     this.updateState = this.updateState.bind(this);
-
+    this.handleSubmit = this.handleSubmit.bind(this)
   };
 
-  updateState(e) {
-
-    let form = e.target;
-    let inputUsername = form.querySelector('[name="inputUsername"]').value;
-    let inputPassword = form.querySelector('[name="inputPassword"]').value;
-
+  updateState(isError, message) {
     this.setState({
-      email: inputUsername,
-      password: inputPassword,
+      isError: isError,
+      output: message,
     });
+  }
+
+  test123(){
+    return console.log('hei there')
+  }
+
+  componentWillMount(nextProps, nextState){
+    console.log(this.state);
+    // if (nextState.isError === false) {
+    //   localStorage.setItem('userid', nextState.output.userId);
+    //   browserHistory.push(`/`)
+    // }
+
   }
 
   handleSubmit(e) {
@@ -32,43 +54,48 @@ class SignIn extends React.Component {
     let inputUsername = form.querySelector('[name="inputUsername"]').value;
     let inputPassword = form.querySelector('[name="inputPassword"]').value;
 
+    var formPayload = new FormData();
+    formPayload.append('username', inputUsername);
+    formPayload.append('password', inputPassword);
+
     let payload = {
       username: inputUsername
       ,password: inputPassword
     }
 
-    var formData = new FormData();
+    const signInParams = Object.keys(payload).map((key) => {
+      return encodeURIComponent(key) + '=' + encodeURIComponent(payload[key]);
+    }).join('&');
+    var myHeaders = new Headers();
 
-    for (var k in payload) {
-      formData.append(k, payload[k]);
-    }
-
-    console.log('gg',new FormData(inputUsername));
-    // let data = JSON.stringify( payload );
-    // console.log(JSON.stringify( payload ));
-    // let data = new FormData();
-    // data.append( "json", JSON.stringify( payload ) );
-
-    fetch("http://localhost:1212/sign-in", {
-      method: "POST",
-      mode: 'no-cors',
-      headers: {
-        'Accept': 'application/json',
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: payload
-    }).then(function(res) {
-      console.log(res);
-    }, function(e) {
-      console.log(e);
+    myHeaders.append('Accept', 'application/json, application/xml, text/plain, text/html, *.*');
+    myHeaders.append('Content-Type', 'application/x-www-form-urlencoded; charset=utf-8');
+    var req = new Request('http://localhost:1212/sign-in', {
+      method: 'POST',
+      body: signInParams,
+      headers: myHeaders
     });
+    var _this = this;
+    fetch(req).then(function (response) {
 
+      response.json().then(function (data) {
+
+        if (response.status !== 401) {
+          return browserHistory.push('/')
+        }
+        var isLoginError = (response.status === 401) ? true : false;
+        return _this.updateState(isLoginError, data.output)
+
+      });
+
+    });
 
   }
 
   render() {
     return (
       <div className="form-signin">
+        { this.state.isError ? <ErrorMessage message={this.state.output} /> : null }
         <form onSubmit={this.handleSubmit}>
           <h2 className="form-signin-heading">Please sign in</h2>
           <label className="sr-only">Email address</label>
